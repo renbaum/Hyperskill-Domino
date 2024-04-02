@@ -61,10 +61,65 @@ class Domino:
 
 
 class DominoStack:
+    """
+
+    DominoStack
+
+    A class that represents a stack of domino objects.
+
+    Methods:
+        - __init__(self)
+            Initializes an empty stack.
+
+        - get_size(self) -> int
+            Returns the size of the stack.
+
+        - add_domino(self, domino: object)
+            Adds the provided domino object to the stack. If the domino parameter is of type list, the elements of the list will be concatenated to the stack.
+            Otherwise, the domino object will be appended as a single element to the stack.
+
+        - remove_domino(self, count: int = 1) -> list
+            Removes the specified number of dominos from the stack.
+            Returns the removed dominos as a list. If the count exceeds the number of dominos in the stack, returns None.
+
+        - remove_domino_at(self, index: int)
+            Removes the domino at the specified index from the stack.
+
+        - __str__(self) -> str
+            Returns a string representation of the stack.
+
+        - check_highest_double(self) -> (Domino, int)
+            Checks for the highest double domino in the stack.
+            Returns a tuple containing the highest double domino found (if any) and its index in the stack.
+
+        - find_domino_index(self, a: int, b: int) -> int
+            Finds the index of a domino in the stack based on the given parameters.
+            Returns the index of the domino in the stack if found, otherwise -1.
+
+        - get_domino(self, index: int) -> Domino or None
+            Retrieves a domino object at the specified index from the stack.
+            Returns the domino object if the index is valid, otherwise returns None.
+
+        - print_list(self)
+            Prints each domino in the stack with its index.
+
+    """
     def __init__(self):
         self.stack = []
 
-    def add_domino(self, domino: object):
+    def do_loop(self):
+        pass
+
+    def get_size(self) -> int:
+        """
+        Returns the size of the stack.
+
+        :return: The size of the stack.
+        :rtype: int
+        """
+        return len(self.stack)
+
+    def add_domino(self, domino: object, position: int = 1):
         """
         :param domino: The domino object to be added to the stack.
         :return: None
@@ -72,10 +127,16 @@ class DominoStack:
         Adds the provided domino object to the stack. If the domino parameter is of type list, the elements of the list will be concatenated to the stack. Otherwise, the domino object will be
         * appended as a single element to the stack.
         """
+        if domino is None:
+            return
+
         if isinstance(domino, list):
             self.stack += domino
         else:
-            self.stack.append(domino)
+            if position == 1:
+                self.stack.append(domino)
+            else:
+                self.stack.insert(0, domino)
 
     def remove_domino(self, count: int = 1) -> list:
         """
@@ -102,6 +163,8 @@ class DominoStack:
         Removes the domino at the specified index from the stack.
         """
         if len(self.stack) >= 0:
+            if index >= len(self.stack):
+                print("The domino is out of range")
             del self.stack[index]
 
     def __str__(self)-> str:
@@ -143,17 +206,6 @@ class DominoStack:
                 return i
         return -1
 
-    def del_domino(self, index: int):
-        """
-        Delete a domino from the stack.
-
-        :param index: The index of the domino to be deleted.
-        :type index: int
-        :return: None
-        """
-        if index < len(self.stack):
-            self.stack.remove(index)
-
     def get_domino(self, index: int) -> Domino or None:
         """
         :param index: An integer representing the index of the domino to retrieve from the stack.
@@ -163,6 +215,53 @@ class DominoStack:
             return self.stack[index]
         else:
             return None
+
+    def print_list(self):
+        """
+        Prints the elements in the stack with their corresponding index.
+
+        :param self: The instance of the class.
+        :type self: object
+
+        :return: None
+        """
+        for index, domino in enumerate(self.stack):
+            print(f"{index + 1}:{str(domino)}")
+
+    def get_weight_list(self) -> dict:
+        weight_list = {i: 0 for i in range(7)}
+        for i in self.stack:
+            weight_list[i.a] += 1
+            weight_list[i.b] += 1
+
+        return weight_list
+
+
+
+class DominoPlayer(DominoStack):
+    def do_loop(self):
+        print()
+        print("Status: It's your turn to make a move. Enter your command.")
+        # get a valuable input
+        answer = None
+        while answer is None:
+            try:
+                answer = int(input())
+                if answer not in range ((-1) * (len(self.stack) + 1), len(self.stack) + 1):
+                    raise ValueError(f"Not in range")
+            except ValueError:
+                print("Invalid input. Please try again.")
+                answer = None
+
+        return answer
+
+class DominoComputer(DominoStack):
+    def do_loop(self):
+        print()
+        print("Status: Computer is about to make a move. Press Enter to continue...")
+        # get the input any key
+        input()
+        return random.randint((-1) * (len(self.stack)), len(self.stack))
 
 class StockPieces(DominoStack):
     """
@@ -227,7 +326,19 @@ class SnakeStack(DominoStack):
     top() -> Domino
         Returns the top domino from the stack without removing it.
     """
-    pass
+    def __str__(self)-> str:
+        """
+        Return a string representation of the object.
+
+        :return: String representation of the stack
+        """
+        ret = ""
+        if self.get_size() > 6:
+            ret = f"{self.stack[0]} {self.stack[1]} {self.stack[2]}...{self.stack[-3]} {self.stack[-2]} {self.stack[-1]}"
+        else:
+            for d in self.stack:
+                ret += str(d) + " "
+        return ret
 
 class Game:
     """
@@ -254,7 +365,6 @@ class Game:
         ok = False
         while not ok:
             ok = self.initialise_game()
-        self.print_status()
 
     def set_player(self, domino: Domino, index: int, next_players: int):
         """
@@ -277,18 +387,15 @@ class Game:
         :return: True if the game was successfully initialised, False otherwise.
         """
         self.stock_pieces = StockPieces()
-        self.players.append(DominoStack())
-        self.players.append(DominoStack())
+        self.players = [None, None]
+        self.players[COMPUTER] = DominoComputer()
+        self.players[PLAYER] = DominoPlayer()
         self.players[PLAYER].add_domino(self.stock_pieces.remove_domino(7))
         self.players[COMPUTER].add_domino(self.stock_pieces.remove_domino(7))
         domino_computer,  index_computer = self.players[COMPUTER].check_highest_double()
         domino_player, index_player = self.players[PLAYER].check_highest_double()
 
         if domino_computer == None and domino_player == None:
-            print("have to reshuffle")
-            print(f"Player: {self.players[PLAYER]}")
-            print(f"Computer: {self.players[COMPUTER]}")
-            print("----------------------------------")
             return False
         if domino_computer == None:
             self.set_player(domino_player, index_player, COMPUTER)
@@ -306,12 +413,53 @@ class Game:
 
         :return: None
         """
-        print(f"Stock pieces: {self.stock_pieces}")
-        print(f"Computer pieces: {self.players[COMPUTER]}")
-        print(f"Player pieces: {self.players[PLAYER]}")
-        print(f"Domino snake: {self.snake}")
-        print("Status: {}".format("player" if self.current_player == PLAYER else "computer"))
+        print("=" * 70)
+        print(f"Stock size: {self.stock_pieces.get_size()}")
+        print(f"Computer pieces: {self.players[COMPUTER].get_size()}")
+        print("")
+        print(self.snake)
+        print()
+        print("Your pieces:")
+        self.players[PLAYER].print_list()
+
+    def is_win_situation(self):
+        if self.players[PLAYER].get_size() == 0:
+            print()
+            print("Status: The game is over. You won!")
+            return True
+        elif self.players[COMPUTER].get_size() == 0:
+            print()
+            print("Status: The game is over. The computer won!")
+            return True
+        else:
+            weight_list = self.snake.get_weight_list()
+            if weight_list[self.snake.get_domino(0).a] == 8 and weight_list[self.snake.get_domino(-1) == 8]:
+                print()
+                print("Status: The game is over. It's a draw!")
+                return True
+        return False
+    def do_game_loop(self):
+        while True :
+            self.print_status()
+            if self.is_win_situation():
+                break
+
+            move = self.players[self.current_player].do_loop()
+            if move == 0:
+                self.players[self.current_player].add_domino(self.stock_pieces.remove_domino(1))
+            elif move > 0:
+                domino = self.players[self.current_player].get_domino(move - 1)
+                self.players[self.current_player].remove_domino_at(move - 1)
+                self.snake.add_domino(domino, 1)
+            elif move < 0:
+                move = abs(move)
+                domino = self.players[self.current_player].get_domino(move - 1)
+                self.players[self.current_player].remove_domino_at(move - 1)
+                self.snake.add_domino(domino, 0)
+            # switch player
+            self.current_player = (self.current_player + 1) % 2
 
 
 game = Game()
+game.do_game_loop()
 
