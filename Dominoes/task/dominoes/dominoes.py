@@ -26,6 +26,13 @@ class Domino:
         """
         return str([self.a, self.b])
 
+    def swap(self):
+        x = self.a
+        self.a = self.b
+        self.b = x
+    def contains_number(self, number: int) -> bool:
+        return number in [self.a, self.b]
+
     def get_list(self) -> list:
         """
         Return a list containing the values of attributes `a` and `b`.
@@ -107,7 +114,7 @@ class DominoStack:
     def __init__(self):
         self.stack = []
 
-    def do_loop(self):
+    def do_loop(self, left: int, right: int, weight_list: dict):
         pass
 
     def get_size(self) -> int:
@@ -239,7 +246,7 @@ class DominoStack:
 
 
 class DominoPlayer(DominoStack):
-    def do_loop(self):
+    def do_loop(self, left: int, right: int, weight_list: dict):
         print()
         print("Status: It's your turn to make a move. Enter your command.")
         # get a valuable input
@@ -249,19 +256,52 @@ class DominoPlayer(DominoStack):
                 answer = int(input())
                 if answer not in range ((-1) * (len(self.stack) + 1), len(self.stack) + 1):
                     raise ValueError(f"Not in range")
+
+                index = abs(answer) - 1
+                if answer < 0:
+                    if not self.stack[index].contains_number(left):
+                        raise Exception("Illegal move. Please try again.")
+                if answer > 0:
+                    if not self.stack[index].contains_number(right):
+                        raise Exception("Illegal move. Please try again.")
             except ValueError:
                 print("Invalid input. Please try again.")
+                answer = None
+            except Exception as e:
+                print(e)
                 answer = None
 
         return answer
 
 class DominoComputer(DominoStack):
-    def do_loop(self):
+    def do_loop(self, left: int, right: int, weight_list: dict) -> int:
         print()
         print("Status: Computer is about to make a move. Press Enter to continue...")
         # get the input any key
         input()
-        return random.randint((-1) * (len(self.stack)), len(self.stack))
+
+        # get the two weight lists and combine them
+        w1 = self.get_weight_list()
+        for i in range(7):
+            w1[i] += weight_list[i]
+
+        # now check all the dominos if they work, and use the one with the highest ranking
+        current_weight = -1
+        side = 0
+        for index, i in enumerate(self.stack):
+            if i.contains_number(left) or i.contains_number(right):
+                w = w1[i.a] + w1[i.b]
+                if w > current_weight:
+                    current_weight = w
+                    best_domino = index
+                    side = -1 if i.contains_number(left) else 1
+        if current_weight == -1:
+            value = 0
+        else:
+            value = best_domino + 1
+            value = value * (-1) if side == -1 else value
+
+        return value
 
 class StockPieces(DominoStack):
     """
@@ -339,6 +379,17 @@ class SnakeStack(DominoStack):
             for d in self.stack:
                 ret += str(d) + " "
         return ret
+
+    def add_domino(self, domino: object, position: int = 1):
+        if len(self.stack) > 0:
+            if position == 0:
+                if domino.b != self.stack[0].a:
+                    domino.swap()
+            elif position == 1:
+                if domino.a != self.stack[-1].b:
+                    domino.swap()
+        super().add_domino(domino, position)
+
 
 class Game:
     """
@@ -443,8 +494,8 @@ class Game:
             self.print_status()
             if self.is_win_situation():
                 break
-
-            move = self.players[self.current_player].do_loop()
+            move = self.players[self.current_player].do_loop(self.snake.get_domino(0).a, self.snake.get_domino(-1).b,
+                                                             self.snake.get_weight_list())
             if move == 0:
                 self.players[self.current_player].add_domino(self.stock_pieces.remove_domino(1))
             elif move > 0:
